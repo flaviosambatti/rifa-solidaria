@@ -348,23 +348,6 @@
             background: #1a6f72;
         }
 
-        .admin-btn {
-            background: #764ba2;
-            color: white;
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 12px;
-            margin-left: 5px;
-            transition: all 0.3s;
-        }
-
-        .admin-btn:hover {
-            background: #5a3a7f;
-        }
-
         @media (max-width: 480px) {
             body {
                 padding: 5px;
@@ -407,7 +390,6 @@
         <header>
             <h1>🤝 Rifa Solidária</h1>
             <p class="subtitle">Escolha seus números e pague via PIX</p>
-            
         </header>
 
         <div class="content">
@@ -457,7 +439,6 @@
 
             <div class="pix-section" id="pixSection">
                 <h2>✅ Pagamento PIX</h2>
-                
                 <p style="margin: 15px 0 10px 0; font-weight: 600; font-size: 15px;">Copie a chave PIX:</p>
                 <div class="pix-copy">020.717.839-99</div>
                 <button class="copy-btn" onclick="copiarPIX()">📋 Copiar Chave PIX</button>
@@ -495,41 +476,62 @@
         </div>
     </div>
 
+    <!-- Firebase v8 -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <script>
-        const CONFIG = {
-            totalNumbers: 200,
-            price: 25.00,
-            pixKey: '020.717.839-99',
-            pixName: 'FLAVIO J S PIERALSKI'
+        // CONFIGURAÇÃO DO FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyCXPJ-Xi1bUq4GPtszUqT7KTsjxQcJAfs",
+            authDomain: "rifa-solidaria-ac511.firebaseapp.com",
+            databaseURL: "https://rifa-solidaria-ac511-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "rifa-solidaria-ac511",
+            storageBucket: "rifa-solidaria-ac511.firebasestorage.app",
+            messagingSenderId: "7239905404",
+            appId: "1:7239905404:web:5c85df3ef507a2bb027d39"
         };
 
-        let rifaNumbers = {};
-        let rifaParticipants = [];
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();   // conexão com Realtime Database [web:84][web:119]
+
+        // CONFIG LOCAL
+        const CONFIG = {
+            totalNumbers: 200,
+            price: 25.00
+        };
+
+        let rifaNumbers = {};       // {0:false,1:true,...}
+        let rifaParticipants = [];  // [{nome,telefone,numeros,timestamp},...]
         let selectedNumbers = [];
 
-        function salvarDados() {
-            localStorage.setItem('rifaNumbers', JSON.stringify(rifaNumbers));
-            localStorage.setItem('rifaParticipants', JSON.stringify(rifaParticipants));
+        // Carrega números vendidos do Firebase
+        function carregarNumerosDoFirebase() {
+            return database.ref("rifa/numeros").once("value").then(snapshot => {
+                rifaNumbers = {};
+                for (let i = 0; i < CONFIG.totalNumbers; i++) {
+                    rifaNumbers[i] = false;
+                }
+                const data = snapshot.val();
+                if (data) {
+                    Object.keys(data).forEach(k => {
+                        rifaNumbers[parseInt(k)] = !!data[k];
+                    });
+                }
+            });
         }
 
-        function carregarDados() {
-            const nums = localStorage.getItem('rifaNumbers');
-            const parts = localStorage.getItem('rifaParticipants');
-            
-            if (nums) rifaNumbers = JSON.parse(nums);
-            if (parts) rifaParticipants = JSON.parse(parts);
-            
-            if (Object.keys(rifaNumbers).length === 0) {
-                initializeRifa();
-            }
-        }
-
-        function initializeRifa() {
-            rifaNumbers = {};
-            for (let i = 0; i < CONFIG.totalNumbers; i++) {
-                rifaNumbers[i] = false;
-            }
-            salvarDados();
+        // Carrega participantes do Firebase
+        function carregarParticipantesDoFirebase() {
+            return database.ref("rifa/participantes").once("value").then(snapshot => {
+                rifaParticipants = [];
+                const data = snapshot.val();
+                if (data) {
+                    Object.keys(data).forEach(id => {
+                        rifaParticipants.push(data[id]);
+                    });
+                }
+            });
         }
 
         function renderNumbers() {
@@ -540,11 +542,11 @@
                 const btn = document.createElement('button');
                 btn.className = 'number-btn';
                 btn.textContent = String(i).padStart(3, '0');
-                
+
                 if (rifaNumbers[i]) {
                     btn.disabled = true;
                 }
-                
+
                 if (selectedNumbers.includes(i)) {
                     btn.classList.add('selected');
                 }
@@ -598,12 +600,17 @@
                 return;
             }
 
+            if (selectedNumbers.length === 0) {
+                showAlert('Selecione ao menos um número!', 'error');
+                return;
+            }
+
             document.getElementById('selectedInfo').classList.remove('show');
             document.getElementById('pixSection').classList.add('active');
         }
 
         function copiarPIX() {
-            navigator.clipboard.writeText(CONFIG.pixKey).then(() => {
+            navigator.clipboard.writeText("020.717.839-99").then(() => {
                 const btn = event.target;
                 const original = btn.textContent;
                 btn.textContent = '✓ Copiado!';
@@ -617,22 +624,36 @@
             const nome = document.getElementById('buyerName').value.trim();
             const telefone = document.getElementById('buyerContact').value.trim();
 
+            if (!nome || !telefone || selectedNumbers.length === 0) {
+                showAlert('Preencha seus dados e selecione os números.', 'error');
+                return;
+            }
+
+            // 1) Marcar números como vendidos no Firebase
+            const updates = {};
+            selectedNumbers.forEach(num => {
+                updates[num] = true;
+            });
+            database.ref("rifa/numeros").update(updates);   // grava todos de uma vez [web:84][web:121]
+
+            // 2) Salvar participante
+            const numsFormatados = selectedNumbers.map(n => String(n).padStart(3, '0'));
+            const participante = {
+                nome: nome,
+                telefone: telefone,
+                numeros: numsFormatados.join(', '),
+                timestamp: Date.now()
+            };
+            database.ref("rifa/participantes").push(participante);
+
+            // 3) Atualizar estado local
             selectedNumbers.forEach(num => {
                 rifaNumbers[num] = true;
             });
-
-            const nums = selectedNumbers.map(n => String(n).padStart(3, '0'));
-            const novoParticipante = {
-                nome: nome,
-                telefone: telefone,
-                numeros: nums.join(', '),
-                timestamp: new Date().getTime()
-            };
-            
-            rifaParticipants.push(novoParticipante);
-            salvarDados();
+            rifaParticipants.push(participante);
 
             updateStats();
+            updateParticipantsList();
             showAlert(`✅ ${selectedNumbers.length} número(s) confirmado(s)!`, 'success');
 
             cancelarPagamento();
@@ -708,25 +729,16 @@
             link.click();
         }
 
-        function limparDados() {
-            if (confirm('⚠️ Tem certeza que deseja LIMPAR todos os dados? Esta ação não pode ser desfeita!')) {
-                localStorage.clear();
-                rifaNumbers = {};
-                rifaParticipants = [];
-                selectedNumbers = [];
-                initializeRifa();
+        // Carregamento inicial: busca tudo no Firebase e depois monta a tela
+        window.addEventListener('load', () => {
+            Promise.all([
+                carregarNumerosDoFirebase(),
+                carregarParticipantesDoFirebase()
+            ]).then(() => {
                 renderNumbers();
                 updateStats();
                 updateParticipantsList();
-               
-            }
-        }
-
-        window.addEventListener('load', () => {
-            carregarDados();
-            renderNumbers();
-            updateStats();
-            updateParticipantsList();
+            });
         });
     </script>
 </body>
