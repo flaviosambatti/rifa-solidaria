@@ -529,10 +529,17 @@
                     rifaNumbers = snapshot.val();
                 } else {
                     initializeRifa();
-                    database.ref('rifa/numeros').set(rifaNumbers);
+                    database.ref('rifa/numeros').set(rifaNumbers).catch(err => {
+                        console.error('Erro ao inicializar rifa:', err);
+                        showAlert('Erro ao conectar com servidor', 'error');
+                    });
                 }
                 renderNumbers();
                 updateStats();
+                document.getElementById('loading').style.display = 'none';
+            }, (error) => {
+                console.error('Erro ao carregar números:', error);
+                showAlert('Erro ao carregar dados do servidor', 'error');
                 document.getElementById('loading').style.display = 'none';
             });
 
@@ -544,6 +551,8 @@
                     rifaParticipants = [];
                 }
                 updateParticipantsList();
+            }, (error) => {
+                console.error('Erro ao carregar participantes:', error);
             });
         }
 
@@ -643,23 +652,26 @@
             selectedNumbers.forEach(num => {
                 rifaNumbers[num] = true;
             });
-            database.ref('rifa/numeros').set(rifaNumbers);
-
-            // Adicionar participante no Firebase
-            const nums = selectedNumbers.map(n => String(n).padStart(3, '0'));
-            const novoParticipante = {
-                nome: nome,
-                telefone: telefone,
-                numeros: nums.join(', '),
-                timestamp: new Date().getTime()
-            };
             
-            database.ref('rifa/participantes').push(novoParticipante);
-
-            updateStats();
-            showAlert(`✅ ${selectedNumbers.length} número(s) confirmado(s)!`, 'success');
-
-            cancelarPagamento();
+            database.ref('rifa/numeros').set(rifaNumbers).then(() => {
+                // Adicionar participante no Firebase
+                const nums = selectedNumbers.map(n => String(n).padStart(3, '0'));
+                const novoParticipante = {
+                    nome: nome,
+                    telefone: telefone,
+                    numeros: nums.join(', '),
+                    timestamp: new Date().getTime()
+                };
+                
+                return database.ref('rifa/participantes').push(novoParticipante);
+            }).then(() => {
+                updateStats();
+                showAlert(`✅ ${selectedNumbers.length} número(s) confirmado(s)!`, 'success');
+                cancelarPagamento();
+            }).catch((error) => {
+                console.error('Erro ao confirmar pagamento:', error);
+                showAlert('Erro ao confirmar. Tente novamente!', 'error');
+            });
         }
 
         function cancelarPagamento() {
@@ -734,8 +746,13 @@
 
         // ✅ INICIAR SINCRONIZAÇÃO COM FIREBASE
         window.addEventListener('load', () => {
-            syncWithFirebase();
+            setTimeout(() => {
+                syncWithFirebase();
+            }, 500);
         });
+
+        // Log para debugging
+        console.log('✅ App Rifa Solidária carregado com Firebase');
     </script>
 </body>
 </html>
