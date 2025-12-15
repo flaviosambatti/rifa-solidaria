@@ -1,3 +1,6 @@
+Rifa Solidária
+
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -283,6 +286,12 @@
             color: #166534;
         }
 
+        .alert-info {
+            background: #dbeafe;
+            border: 1px solid #93c5fd;
+            color: #1e40af;
+        }
+
         .participants-list {
             background: #fafafa;
             border: 1px solid #e5e7eb;
@@ -348,6 +357,106 @@
             background: #1a6f72;
         }
 
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #208a8d;
+        }
+
+        .admin-panel {
+            background: #fef2f2;
+            border: 2px solid #dc2626;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .admin-panel.show {
+            display: block;
+        }
+
+        .admin-panel h3 {
+            color: #dc2626;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .admin-input {
+            padding: 10px 12px;
+            border: 2px solid #fca5a5;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 10px;
+            width: 100%;
+            color: #1f2937;
+        }
+
+        .admin-list {
+            background: white;
+            border: 1px solid #fca5a5;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .admin-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #fee2e2;
+            font-size: 13px;
+        }
+
+        .admin-item:last-child {
+            border-bottom: none;
+        }
+
+        .admin-item-info {
+            flex: 1;
+        }
+
+        .admin-item-name {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .admin-item-numbers {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 3px;
+        }
+
+        .admin-delete-btn {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-left: 10px;
+        }
+
+        .admin-delete-btn:hover {
+            background: #991b1b;
+        }
+
+        .admin-btn-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .admin-btn-group button {
+            flex: 1;
+        }
+
         @media (max-width: 480px) {
             body {
                 padding: 5px;
@@ -411,6 +520,7 @@
             </div>
 
             <h2 style="margin-bottom: 15px; color: #1f2937; font-size: 16px;">Selecione seus Números</h2>
+            <div class="loading" id="loading">⏳ Carregando números do servidor...</div>
             <div class="numbers-grid" id="numbersGrid"></div>
 
             <div class="info-section" id="selectedInfo">
@@ -439,6 +549,7 @@
 
             <div class="pix-section" id="pixSection">
                 <h2>✅ Pagamento PIX</h2>
+                
                 <p style="margin: 15px 0 10px 0; font-weight: 600; font-size: 15px;">Copie a chave PIX:</p>
                 <div class="pix-copy">020.717.839-99</div>
                 <button class="copy-btn" onclick="copiarPIX()">📋 Copiar Chave PIX</button>
@@ -473,15 +584,30 @@
                 <button class="download-btn" onclick="downloadListaCSV()">📥 CSV</button>
                 <button class="download-btn" onclick="downloadListaTXT()">📄 TXT</button>
             </div>
+
+            <div class="admin-panel" id="adminPanel">
+                <h3>⚙️ Painel de Admin</h3>
+                <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Digite a senha para acessar as funções administrativas.</p>
+                <input type="password" id="adminPassword" class="admin-input" placeholder="Senha do admin">
+                <button class="btn btn-success" onclick="verificarSenhaAdmin()">Desbloquear</button>
+                
+                <div id="adminContent" style="display: none; margin-top: 20px;">
+                    <h4 style="color: #dc2626; margin-bottom: 10px;">Deletar Participante</h4>
+                    <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Selecione um participante para deletá-lo (libera seus números).</p>
+                    <div class="admin-list" id="adminParticipantsList">
+                    </div>
+                    <button class="btn btn-secondary" onclick="fecharAdminPanel()" style="margin-top: 15px;">Sair do Admin</button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Firebase v8 -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-database.js"></script>
 
     <script>
-        // CONFIGURAÇÃO DO FIREBASE
+        // 🎯 CREDENCIAIS DO FIREBASE (CORRIGIDAS)
         const firebaseConfig = {
             apiKey: "AIzaSyCXPJ-Xi1bUq4GPtszUqT7KTsjxQcJAfs",
             authDomain: "rifa-solidaria-ac511.firebaseapp.com",
@@ -492,46 +618,61 @@
             appId: "1:7239905404:web:5c85df3ef507a2bb027d39"
         };
 
+        // Inicializar Firebase
         firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();   // conexão com Realtime Database [web:84][web:119]
+        const database = firebase.database();
 
-        // CONFIG LOCAL
         const CONFIG = {
             totalNumbers: 200,
-            price: 25.00
+            price: 25.00,
+            pixKey: '020.717.839-99',
+            pixName: 'FLAVIO J S PIERALSKI'
         };
 
-        let rifaNumbers = {};       // {0:false,1:true,...}
-        let rifaParticipants = [];  // [{nome,telefone,numeros,timestamp},...]
+        let rifaNumbers = {};
+        let rifaParticipants = [];
         let selectedNumbers = [];
 
-        // Carrega números vendidos do Firebase
-        function carregarNumerosDoFirebase() {
-            return database.ref("rifa/numeros").once("value").then(snapshot => {
-                rifaNumbers = {};
-                for (let i = 0; i < CONFIG.totalNumbers; i++) {
-                    rifaNumbers[i] = false;
-                }
-                const data = snapshot.val();
-                if (data) {
-                    Object.keys(data).forEach(k => {
-                        rifaNumbers[parseInt(k)] = !!data[k];
+        // ✅ SINCRONIZAR COM FIREBASE EM TEMPO REAL
+        function syncWithFirebase() {
+            // Carregar números vendidos
+            database.ref('rifa/numeros').on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    rifaNumbers = snapshot.val();
+                } else {
+                    initializeRifa();
+                    database.ref('rifa/numeros').set(rifaNumbers).catch(err => {
+                        console.error('Erro ao inicializar rifa:', err);
+                        showAlert('Erro ao conectar com servidor', 'error');
                     });
                 }
+                renderNumbers();
+                updateStats();
+                document.getElementById('loading').style.display = 'none';
+            }, (error) => {
+                console.error('Erro ao carregar números:', error);
+                showAlert('Erro ao carregar dados do servidor', 'error');
+                document.getElementById('loading').style.display = 'none';
+            });
+
+            // Carregar participantes
+            database.ref('rifa/participantes').on('value', (snapshot) => {
+                if (snapshot.exists()) {
+                    rifaParticipants = Object.values(snapshot.val());
+                } else {
+                    rifaParticipants = [];
+                }
+                updateParticipantsList();
+            }, (error) => {
+                console.error('Erro ao carregar participantes:', error);
             });
         }
 
-        // Carrega participantes do Firebase
-        function carregarParticipantesDoFirebase() {
-            return database.ref("rifa/participantes").once("value").then(snapshot => {
-                rifaParticipants = [];
-                const data = snapshot.val();
-                if (data) {
-                    Object.keys(data).forEach(id => {
-                        rifaParticipants.push(data[id]);
-                    });
-                }
-            });
+        function initializeRifa() {
+            rifaNumbers = {};
+            for (let i = 0; i < CONFIG.totalNumbers; i++) {
+                rifaNumbers[i] = false;
+            }
         }
 
         function renderNumbers() {
@@ -542,11 +683,11 @@
                 const btn = document.createElement('button');
                 btn.className = 'number-btn';
                 btn.textContent = String(i).padStart(3, '0');
-
+                
                 if (rifaNumbers[i]) {
                     btn.disabled = true;
                 }
-
+                
                 if (selectedNumbers.includes(i)) {
                     btn.classList.add('selected');
                 }
@@ -600,17 +741,12 @@
                 return;
             }
 
-            if (selectedNumbers.length === 0) {
-                showAlert('Selecione ao menos um número!', 'error');
-                return;
-            }
-
             document.getElementById('selectedInfo').classList.remove('show');
             document.getElementById('pixSection').classList.add('active');
         }
 
         function copiarPIX() {
-            navigator.clipboard.writeText("020.717.839-99").then(() => {
+            navigator.clipboard.writeText(CONFIG.pixKey).then(() => {
                 const btn = event.target;
                 const original = btn.textContent;
                 btn.textContent = '✓ Copiado!';
@@ -624,39 +760,30 @@
             const nome = document.getElementById('buyerName').value.trim();
             const telefone = document.getElementById('buyerContact').value.trim();
 
-            if (!nome || !telefone || selectedNumbers.length === 0) {
-                showAlert('Preencha seus dados e selecione os números.', 'error');
-                return;
-            }
-
-            // 1) Marcar números como vendidos no Firebase
-            const updates = {};
-            selectedNumbers.forEach(num => {
-                updates[num] = true;
-            });
-            database.ref("rifa/numeros").update(updates);   // grava todos de uma vez [web:84][web:121]
-
-            // 2) Salvar participante
-            const numsFormatados = selectedNumbers.map(n => String(n).padStart(3, '0'));
-            const participante = {
-                nome: nome,
-                telefone: telefone,
-                numeros: numsFormatados.join(', '),
-                timestamp: Date.now()
-            };
-            database.ref("rifa/participantes").push(participante);
-
-            // 3) Atualizar estado local
+            // Atualizar números no Firebase
             selectedNumbers.forEach(num => {
                 rifaNumbers[num] = true;
             });
-            rifaParticipants.push(participante);
-
-            updateStats();
-            updateParticipantsList();
-            showAlert(`✅ ${selectedNumbers.length} número(s) confirmado(s)!`, 'success');
-
-            cancelarPagamento();
+            
+            database.ref('rifa/numeros').set(rifaNumbers).then(() => {
+                // Adicionar participante no Firebase
+                const nums = selectedNumbers.map(n => String(n).padStart(3, '0'));
+                const novoParticipante = {
+                    nome: nome,
+                    telefone: telefone,
+                    numeros: nums.join(', '),
+                    timestamp: new Date().getTime()
+                };
+                
+                return database.ref('rifa/participantes').push(novoParticipante);
+            }).then(() => {
+                updateStats();
+                showAlert(`✅ ${selectedNumbers.length} número(s) confirmado(s)!`, 'success');
+                cancelarPagamento();
+            }).catch((error) => {
+                console.error('Erro ao confirmar pagamento:', error);
+                showAlert('Erro ao confirmar. Tente novamente!', 'error');
+            });
         }
 
         function cancelarPagamento() {
@@ -729,17 +856,101 @@
             link.click();
         }
 
-        // Carregamento inicial: busca tudo no Firebase e depois monta a tela
-        window.addEventListener('load', () => {
+        // ========== ADMIN PANEL ==========
+        const ADMIN_PASSWORD = '1234'; // MUDE ISTO PARA ALGO MAIS SEGURO!
+
+        function abrirAdminPanel() {
+            document.getElementById('adminPanel').classList.add('show');
+        }
+
+        function fecharAdminPanel() {
+            document.getElementById('adminPanel').classList.remove('show');
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('adminContent').style.display = 'none';
+        }
+
+        function verificarSenhaAdmin() {
+            const senha = document.getElementById('adminPassword').value;
+            if (senha === ADMIN_PASSWORD) {
+                document.getElementById('adminContent').style.display = 'block';
+                atualizarListaAdminParticipantes();
+            } else {
+                alert('Senha incorreta!');
+                document.getElementById('adminPassword').value = '';
+            }
+        }
+
+        function atualizarListaAdminParticipantes() {
+            const lista = document.getElementById('adminParticipantsList');
+            lista.innerHTML = '';
+
+            // Buscar todos os participantes com suas keys do Firebase
+            database.ref('rifa/participantes').once('value').then(snapshot => {
+                const participantesData = snapshot.val();
+                if (!participantesData) {
+                    lista.innerHTML = '<p style="color: #666;">Nenhum participante encontrado.</p>';
+                    return;
+                }
+
+                Object.keys(participantesData).forEach(key => {
+                    const p = participantesData[key];
+                    const item = document.createElement('div');
+                    item.className = 'admin-item';
+                    item.innerHTML = `
+                        <div class="admin-item-info">
+                            <div class="admin-item-name">${p.nome}</div>
+                            <div class="admin-item-numbers">📱 ${p.telefone} | 🎟️ ${p.numeros}</div>
+                        </div>
+                        <button class="admin-delete-btn" onclick="deletarParticipanteAdmin('${key}', '${p.numeros}')">🗑️ Deletar</button>
+                    `;
+                    lista.appendChild(item);
+                });
+            });
+        }
+
+        function deletarParticipanteAdmin(firebaseKey, numerosString) {
+            if (!confirm('⚠️ Tem certeza que deseja deletar este participante e liberar seus números?')) {
+                return;
+            }
+
+            // Extrair os números do string "001, 002, 003"
+            const numeros = numerosString.split(',').map(n => parseInt(n.trim()));
+
+            // 1) Liberar os números no rifa/numeros
+            const updates = {};
+            numeros.forEach(num => {
+                updates[num] = false;
+            });
+
             Promise.all([
-                carregarNumerosDoFirebase(),
-                carregarParticipantesDoFirebase()
+                database.ref('rifa/numeros').update(updates),
+                database.ref(`rifa/participantes/${firebaseKey}`).remove()
             ]).then(() => {
-                renderNumbers();
+                showAlert('✅ Participante deletado e números liberados!', 'success');
+                atualizarListaAdminParticipantes();
                 updateStats();
                 updateParticipantsList();
+                renderNumbers();
+            }).catch(err => {
+                console.error('Erro ao deletar:', err);
+                showAlert('❌ Erro ao deletar participante', 'error');
             });
+        }
+
+        // ========== INICIALIZAÇÃO ==========
+
+        // ✅ INICIAR SINCRONIZAÇÃO COM FIREBASE
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                syncWithFirebase();
+            }, 500);
+            
+            // Mostrar painel admin com duplo clique no header
+            document.querySelector('header').addEventListener('dblclick', abrirAdminPanel);
         });
+
+        // Log para debugging
+        console.log('✅ App Rifa Solidária carregado com Firebase');
     </script>
 </body>
 </html>
