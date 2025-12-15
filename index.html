@@ -283,12 +283,6 @@
             color: #166534;
         }
 
-        .alert-info {
-            background: #dbeafe;
-            border: 1px solid #93c5fd;
-            color: #1e40af;
-        }
-
         .participants-list {
             background: #fafafa;
             border: 1px solid #e5e7eb;
@@ -354,10 +348,21 @@
             background: #1a6f72;
         }
 
-        .loading {
-            text-align: center;
-            padding: 20px;
-            color: #208a8d;
+        .admin-btn {
+            background: #764ba2;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            margin-left: 5px;
+            transition: all 0.3s;
+        }
+
+        .admin-btn:hover {
+            background: #5a3a7f;
         }
 
         @media (max-width: 480px) {
@@ -402,6 +407,7 @@
         <header>
             <h1>🤝 Rifa Solidária</h1>
             <p class="subtitle">Escolha seus números e pague via PIX</p>
+            <button class="admin-btn" onclick="limparDados()">🔄 Resetar</button>
         </header>
 
         <div class="content">
@@ -423,7 +429,305 @@
             </div>
 
             <h2 style="margin-bottom: 15px; color: #1f2937; font-size: 16px;">Selecione seus Números</h2>
-            <div class="loading" id="loading">⏳ Carregando números do servidor...</div>
             <div class="numbers-grid" id="numbersGrid"></div>
 
-            <div class="info-section" id
+            <div class="info-section" id="selectedInfo">
+                <div class="info-row">
+                    <span class="info-label">Números Selecionados:</span>
+                    <span class="info-value" id="selectedNumbers">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Quantidade:</span>
+                    <span class="info-value" id="selectedQuantity">0</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Seu Nome Completo:</span>
+                    <input type="text" id="buyerName" placeholder="Digite seu nome">
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Telefone / WhatsApp:</span>
+                    <input type="text" id="buyerContact" placeholder="(11) 99999-9999">
+                </div>
+                <div class="info-row" style="border-top: 2px solid #208a8d; padding-top: 10px; margin-top: 10px;">
+                    <span class="info-label" style="font-size: 15px;">💰 Valor Total:</span>
+                    <span class="info-value" id="selectedPrice" style="font-size: 18px; color: #22c55e;">-</span>
+                </div>
+                <button class="btn btn-primary" onclick="abrirPagamento()">💳 Ir para Pagamento</button>
+            </div>
+
+            <div class="pix-section" id="pixSection">
+                <h2>✅ Pagamento PIX</h2>
+                
+                <p style="margin: 15px 0 10px 0; font-weight: 600; font-size: 15px;">Copie a chave PIX:</p>
+                <div class="pix-copy">020.717.839-99</div>
+                <button class="copy-btn" onclick="copiarPIX()">📋 Copiar Chave PIX</button>
+
+                <p style="margin-top: 15px; font-size: 13px; color: #666; line-height: 1.5; background: #f0f9ff; padding: 12px; border-radius: 6px;">
+                    <strong>📱 Beneficiário:</strong> FLAVIO J S PIERALSKI<br>
+                    <strong>🔑 Chave:</strong> 020.717.839-99<br><br>
+                    ✓ Abra seu app de banco<br>
+                    ✓ PIX → Copia e Cola<br>
+                    ✓ Cole a chave<br>
+                    ✓ Confirme o pagamento
+                </p>
+
+                <button class="btn btn-success" onclick="confirmarPagamento()">✓ Confirmar Pagamento</button>
+                <button class="btn btn-secondary" onclick="cancelarPagamento()">← Voltar</button>
+            </div>
+
+            <div class="participants-list" id="participantsList">
+                <h3>📋 Participantes</h3>
+                <table class="participants-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nome</th>
+                            <th>Telefone</th>
+                            <th>Números</th>
+                        </tr>
+                    </thead>
+                    <tbody id="participantsBody">
+                    </tbody>
+                </table>
+                <button class="download-btn" onclick="downloadListaCSV()">📥 CSV</button>
+                <button class="download-btn" onclick="downloadListaTXT()">📄 TXT</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            totalNumbers: 200,
+            price: 25.00,
+            pixKey: '020.717.839-99',
+            pixName: 'FLAVIO J S PIERALSKI'
+        };
+
+        let rifaNumbers = {};
+        let rifaParticipants = [];
+        let selectedNumbers = [];
+
+        function salvarDados() {
+            localStorage.setItem('rifaNumbers', JSON.stringify(rifaNumbers));
+            localStorage.setItem('rifaParticipants', JSON.stringify(rifaParticipants));
+        }
+
+        function carregarDados() {
+            const nums = localStorage.getItem('rifaNumbers');
+            const parts = localStorage.getItem('rifaParticipants');
+            
+            if (nums) rifaNumbers = JSON.parse(nums);
+            if (parts) rifaParticipants = JSON.parse(parts);
+            
+            if (Object.keys(rifaNumbers).length === 0) {
+                initializeRifa();
+            }
+        }
+
+        function initializeRifa() {
+            rifaNumbers = {};
+            for (let i = 0; i < CONFIG.totalNumbers; i++) {
+                rifaNumbers[i] = false;
+            }
+            salvarDados();
+        }
+
+        function renderNumbers() {
+            const grid = document.getElementById('numbersGrid');
+            grid.innerHTML = '';
+
+            for (let i = 0; i < CONFIG.totalNumbers; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'number-btn';
+                btn.textContent = String(i).padStart(3, '0');
+                
+                if (rifaNumbers[i]) {
+                    btn.disabled = true;
+                }
+                
+                if (selectedNumbers.includes(i)) {
+                    btn.classList.add('selected');
+                }
+
+                btn.onclick = () => toggleNumber(i);
+                grid.appendChild(btn);
+            }
+        }
+
+        function toggleNumber(num) {
+            if (rifaNumbers[num]) {
+                alert('Este número já foi vendido!');
+                return;
+            }
+
+            if (selectedNumbers.includes(num)) {
+                selectedNumbers = selectedNumbers.filter(n => n !== num);
+            } else {
+                selectedNumbers.push(num);
+            }
+
+            selectedNumbers.sort((a, b) => a - b);
+
+            if (selectedNumbers.length > 0) {
+                updateDisplay();
+                document.getElementById('selectedInfo').classList.add('show');
+            } else {
+                document.getElementById('selectedInfo').classList.remove('show');
+                document.getElementById('pixSection').classList.remove('active');
+            }
+
+            renderNumbers();
+        }
+
+        function updateDisplay() {
+            const qty = selectedNumbers.length;
+            const total = qty * CONFIG.price;
+            const nums = selectedNumbers.map(n => String(n).padStart(3, '0')).join(', ');
+
+            document.getElementById('selectedNumbers').textContent = nums;
+            document.getElementById('selectedQuantity').textContent = qty;
+            document.getElementById('selectedPrice').textContent = `R$ ${total.toFixed(2)}`;
+        }
+
+        function abrirPagamento() {
+            const nome = document.getElementById('buyerName').value.trim();
+            const telefone = document.getElementById('buyerContact').value.trim();
+
+            if (!nome || !telefone) {
+                showAlert('Preencha seu nome e telefone!', 'error');
+                return;
+            }
+
+            document.getElementById('selectedInfo').classList.remove('show');
+            document.getElementById('pixSection').classList.add('active');
+        }
+
+        function copiarPIX() {
+            navigator.clipboard.writeText(CONFIG.pixKey).then(() => {
+                const btn = event.target;
+                const original = btn.textContent;
+                btn.textContent = '✓ Copiado!';
+                setTimeout(() => {
+                    btn.textContent = original;
+                }, 2000);
+            });
+        }
+
+        function confirmarPagamento() {
+            const nome = document.getElementById('buyerName').value.trim();
+            const telefone = document.getElementById('buyerContact').value.trim();
+
+            selectedNumbers.forEach(num => {
+                rifaNumbers[num] = true;
+            });
+
+            const nums = selectedNumbers.map(n => String(n).padStart(3, '0'));
+            const novoParticipante = {
+                nome: nome,
+                telefone: telefone,
+                numeros: nums.join(', '),
+                timestamp: new Date().getTime()
+            };
+            
+            rifaParticipants.push(novoParticipante);
+            salvarDados();
+
+            updateStats();
+            showAlert(`✅ ${selectedNumbers.length} número(s) confirmado(s)!`, 'success');
+
+            cancelarPagamento();
+        }
+
+        function cancelarPagamento() {
+            selectedNumbers = [];
+            document.getElementById('selectedInfo').classList.remove('show');
+            document.getElementById('pixSection').classList.remove('active');
+            document.getElementById('buyerName').value = '';
+            document.getElementById('buyerContact').value = '';
+            renderNumbers();
+        }
+
+        function updateStats() {
+            const vendidos = Object.values(rifaNumbers).filter(v => v).length;
+            document.getElementById('availableNumbers').textContent = CONFIG.totalNumbers - vendidos;
+            document.getElementById('soldNumbers').textContent = vendidos;
+        }
+
+        function showAlert(msg, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = msg;
+            alert.className = `alert show alert-${type}`;
+            setTimeout(() => alert.classList.remove('show'), 3000);
+        }
+
+        function updateParticipantsList() {
+            const tbody = document.getElementById('participantsBody');
+            tbody.innerHTML = '';
+
+            rifaParticipants.forEach((p, i) => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${i + 1}</td>
+                    <td>${p.nome}</td>
+                    <td>${p.telefone}</td>
+                    <td>${p.numeros}</td>
+                `;
+            });
+
+            if (rifaParticipants.length > 0) {
+                document.getElementById('participantsList').classList.add('show');
+            }
+        }
+
+        function downloadListaCSV() {
+            let csv = 'Ordem,Nome,Telefone,Números\n';
+            rifaParticipants.forEach((p, i) => {
+                csv += `${i + 1},"${p.nome}","${p.telefone}","${p.numeros}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'rifa_participantes.csv';
+            link.click();
+        }
+
+        function downloadListaTXT() {
+            let txt = '=== RIFA SOLIDÁRIA ===\n\n';
+            txt += 'Ordem | Nome | Telefone | Números\n';
+            txt += '-----\n';
+            rifaParticipants.forEach((p, i) => {
+                txt += `${i + 1} | ${p.nome} | ${p.telefone} | ${p.numeros}\n`;
+            });
+            txt += '\nTOTAL: ' + rifaParticipants.length + '\n';
+
+            const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'rifa_participantes.txt';
+            link.click();
+        }
+
+        function limparDados() {
+            if (confirm('⚠️ Tem certeza que deseja LIMPAR todos os dados? Esta ação não pode ser desfeita!')) {
+                localStorage.clear();
+                rifaNumbers = {};
+                rifaParticipants = [];
+                selectedNumbers = [];
+                initializeRifa();
+                renderNumbers();
+                updateStats();
+                updateParticipantsList();
+                showAlert('✅ Dados resetados!', 'success');
+            }
+        }
+
+        window.addEventListener('load', () => {
+            carregarDados();
+            renderNumbers();
+            updateStats();
+            updateParticipantsList();
+        });
+    </script>
+</body>
+</html>
