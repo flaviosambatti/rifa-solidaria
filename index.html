@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultado do Sorteio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        /* OVERLAY CONTAGEM REGRESSIVA */
+        .countdown-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.95));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeOut 0.6s ease-out 5.4s forwards;
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            100% { opacity: 0; visibility: hidden; }
+        }
+
+        .countdown-text {
+            font-size: 48px;
+            font-weight: 800;
+            color: #ff6b35;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 30px;
+            animation: pulse-title 0.8s ease-in-out infinite;
+        }
+
+        @keyframes pulse-title {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .countdown-number {
+            font-size: 140px;
+            font-weight: 900;
+            color: #ffd700;
+            line-height: 1;
+            text-shadow: 0 10px 30px rgba(255, 215, 0, 0.8);
+            animation: scaleDown 1s ease-in-out infinite;
+        }
+
+        @keyframes scaleDown {
+            0% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.8; }
+        }
+
+        /* HEADER */
+        header {
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+            font-weight: 800;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            opacity: 0.95;
+        }
+
+        /* SEÇÃO INFO DO SORTEIO */
+        .info-sorteio {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            padding: 24px 20px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .info-card {
+            text-align: center;
+            padding: 12px;
+        }
+
+        .info-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #6c757d;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .info-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #212529;
+        }
+
+        .info-extra {
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+
+        /* AREA DA ROLETA */
+        .lottery-area {
+            padding: 40px 20px;
+            text-align: center;
+            background: white;
+        }
+
+        .wheel-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+        }
+
+        .wheel-display {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: 8px solid #ff6b35;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 30% 30%, #fff9e6, #fff);
+            box-shadow: 0 20px 50px rgba(255, 107, 53, 0.3), inset 0 0 20px rgba(255, 107, 53, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wheel-display::before {
+            content: '';
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 30px;
+            background: #ff6b35;
+            clip-path: polygon(0 100%, 50% 0, 100% 100%);
+            z-index: 10;
+        }
+
+        .wheel-number {
+            font-size: 72px;
+            font-weight: 900;
+            color: #ff6b35;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            line-height: 1;
+            animation: spin-numbers 0.08s linear infinite;
+        }
+
+        .wheel-number.stopped {
+            animation: none;
+            font-size: 96px;
+            color: #ffd700;
+            text-shadow: 0 8px 20px rgba(255, 215, 0, 0.6);
+        }
+
+        @keyframes spin-numbers {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(0.95); }
+        }
+
+        /* RESULTADO */
+        .result-section {
+            margin: 30px 0;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 15px 40px rgba(255, 215, 0, 0.4);
+            margin-bottom: 20px;
+        }
+
+        .result-label {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #8b6914;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .result-number {
+            font-size: 84px;
+            font-weight: 900;
+            color: #ff6b35;
+            line-height: 1;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        /* TABELA DE PARTICIPANTES */
+        .participants-area {
+            padding: 24px 20px;
+            background: #f8f9fa;
+        }
+
+        .participants-area h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #212529;
+            font-weight: 700;
+        }
+
+        .table-wrapper {
+            border-radius: 12px;
+            border: 1px solid #dee2e6;
+            overflow: auto;
+            max-height: 450px;
+            background: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #212529 0%, #343a40 100%);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            padding: 14px 12px;
+            color: white;
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #dee2e6;
+            transition: background 0.3s;
+        }
+
+        tbody tr:hover {
+            background: #f0f0f0;
+        }
+
+        td {
+            padding: 12px;
+            color: #495057;
+        }
+
+        /* LINHA DO VENCEDOR */
+        .winner-row {
+            background: linear-gradient(90deg, #ffd700 0%, #ffed4e 100%) !important;
+            font-weight: 700;
+            color: #8b6914;
+        }
+
+        .winner-row:hover {
+            background: linear-gradient(90deg, #ffd700 0%, #ffe66d 100%) !important;
+        }
+
+        .winner-badge {
+            display: inline-block;
+            background: #ff6b35;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* SEÇÃO DE AGRADECIMENTO */
+        .gratitude-section {
+            background: linear-gradient(135deg, #2d5016 0%, #1e3a0f 100%);
+            padding: 60px 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gratitude-section::before {
+            content: '✨';
+            position: absolute;
+            top: 20px;
+            left: 30px;
+            font-size: 40px;
+            opacity: 0.3;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .gratitude-section::after {
+            content: '🎄';
+            position: absolute;
+            bottom: 20px;
+            right: 30px;
+            font-size: 40px;
+            opacity: 0.3;
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .gratitude-title {
+            font-size: 36px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 20px;
+            text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .gratitude-message {
+            font-size: 18px;
+            color: #e8f5e9;
+            line-height: 1.8;
+            margin: 20px 0 30px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            font-style: italic;
+        }
+
+        .gratitude-divider {
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #ffed4e, transparent);
+            margin: 25px auto;
+        }
+
+        .gratitude-footer {
+            font-size: 16px;
+            color: #fff;
+            margin-top: 30px;
+            font-weight: 600;
+        }
+
+        .author-name {
+            font-size: 24px;
+            color: #ffed4e;
+            font-weight: 800;
+            margin-top: 20px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .wishes {
+            font-size: 14px;
+            color: #c8e6c9;
+            margin-top: 20px;
+            letter-spacing: 1px;
+        }
+
+        .ornament-top {
+            display: inline-block;
+            margin: 0 10px;
+        }
+
+        @media (max-width: 640px) {
+            h1 {
+                font-size: 24px;
+            }
+
+            .countdown-number {
+                font-size: 100px;
+            }
+
+            .result-number {
+                font-size: 64px;
+            }
+
+            .wheel-display {
+                width: 150px;
+                height: 150px;
+            }
+
+            .wheel-number {
+                font-size: 54px;
+            }
+
+            .wheel-number.stopped {
+                font-size: 72px;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+
+            .gratitude-title {
+                font-size: 28px;
+            }
+
+            .gratitude-message {
+                font-size: 16px;
+            }
+
+            .author-name {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- OVERLAY DA CONTAGEM -->
+<div class="countdown-overlay" id="countdownOverlay">
+    <div class="countdown-text">Sorteio Rifa Solidária</div>
+    <div class="countdown-number" id="countdownNumber">5</div>
+</div>
+
+<div class="container">
+    <!-- HEADER -->
+    <header>
+        <h1>🎰 Resultado do Sorteio:</h1>
+        <p class="subtitle">Extração oficial do número vencedor</p>
+    </header>
+
+    <!-- INFORMAÇÕES DO SORTEIO -->
+    <section class="info-sorteio">
+        <div class="info-card">
+            <div class="info-label">Data do Sorteio</div>
+            <div class="info-value">21 de dez. de 2025, 20:00</div>
+            <div class="info-extra">(Horário de Brasília)</div>
+        </div>
+        <div class="info-card">
+            <div class="info-label">Quantidade Sorteada</div>
+            <div class="info-value">1</div>
+            <div class="info-extra">Número do vencedor</div>
+        </div>
+        <div class="info-card">
+            <div class="info-label">Sorteio Entre</div>
+            <div class="info-value">0 e 199</div>
+            <div class="info-extra">Total: 200 cotas</div>
+        </div>
+    </section>
+
+    <!-- ÁREA DA ROLETA -->
+    <section class="lottery-area">
+        <div class="wheel-container">
+            <div class="wheel-display">
+                <div class="wheel-number" id="wheelNumber">000</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- RESULTADO -->
+    <section class="result-section" id="resultSection">
+        <div class="result-card">
+            <div class="result-label">Número Vencedor</div>
+            <div class="result-number" id="resultNumber">190</div>
+        </div>
+    </section>
+
+    <!-- TABELA DE PARTICIPANTES -->
+    <section class="participants-area">
+        <h2>📋 Participantes e Números</h2>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nome</th>
+                        <th>Telefone</th>
+                        <th>Números</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="participantsBody">
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- SEÇÃO DE AGRADECIMENTO -->
+    <section class="gratitude-section">
+        <div class="ornament-top">🎅</div>
+        <h2 class="gratitude-title">Muito Obrigado! 🙏</h2>
+        
+        <p class="gratitude-message">
+            A todos que participaram desta rifa solidária, meu coração transborda de gratidão. 
+            Cada um de vocês fez parte de uma jornada especial que vou carregar comigo para sempre.
+        </p>
+
+        <div class="gratitude-divider"></div>
+
+        <p class="wishes">
+            ✨ Que o Natal os abençoe com paz e alegria ✨
+        </p>
+
+        <p class="wishes" style="margin-top: 15px;">
+            🌟 Que 2026 chegue repleto de prosperidade, saúde e muita luz 🌟
+        </p>
+
+        <div class="author-name">Flávio Sambatti</div>
+
+        <p class="gratitude-footer" style="margin-top: 30px;">
+            Com todo carinho e sincero reconhecimento
+        </p>
+    </section>
+</div>
+
+<script>
+    // ====== CONFIGURAÇÃO ======
+    const WINNING_NUMBER = 190;
+    const COUNTDOWN_TIME = 5; // segundos
+
+    // LISTA DE PARTICIPANTES - ATUALIZADA
+    const participants = [
+        { nome: "Thiago Baroni", telefone: "000000000", numeros: "001, 013, 021" },
+        { nome: "Claudio Stefani", telefone: "000000000", numeros: "014" },
+        { nome: "Renan Gomes", telefone: "000000000", numeros: "033" },
+        { nome: "João Menezes", telefone: "00000000", numeros: "004, 020, 051, 053" },
+        { nome: "Rodrigo Geraldo", telefone: "0000000000", numeros: "007, 019, 023, 029" },
+        { nome: "Eduardo Garcia", telefone: "0000000000", numeros: "003, 008, 015, 026" },
+        { nome: "Marcus Gregati", telefone: "0000000000", numeros: "000, 047, 057, 066, 084, 171" },
+        { nome: "Pappa", telefone: "000000000", numeros: "018, 036, 045, 196" },
+        { nome: "JB Leonel", telefone: "00000000", numeros: "022, 049, 078, 144" },
+        { nome: "Edmilson Gonçalves", telefone: "00000000000", numeros: "002, 010, 039, 102, 114, 131, 159, 161, 185, 198" },
+        { nome: "Schin", telefone: "00000000", numeros: "060" },
+        { nome: "Roberto Ribeiro de Almeida", telefone: "(17) 99614 0908", numeros: "009" },
+        { nome: "MARCUS VINICIUS FINOTELO", telefone: "17 99778-5958", numeros: "172, 173, 179, 180" },
+        { nome: "Marcos Bastos Filho", telefone: "17991290400", numeros: "017, 186" },
+        { nome: "Augusto Azevedo", telefone: "17981232430", numeros: "024" },
+        { nome: "Alexandre Casseb", telefone: "17996435397", numeros: "024, 050, 070, 072, 110, 122" },
+        { nome: "Luiz Braga", telefone: "17982301088", numeros: "011, 012, 028, 038, 048, 058, 068, 077, 088, 098, 108, 118" },
+        { nome: "Claudionor Antonio Ziroldo Junior", telefone: "17981168540", numeros: "079, 111" },
+        { nome: "Renato Dervelan", telefone: "17991451919", numeros: "031" },
+        { nome: "Eric Candeloro Geraldo", telefone: "16996169029", numeros: "044, 133" },
+        { nome: "Sancler", telefone: "00000000", numeros: "035, 063, 129, 148" },
+        { nome: "Tonello", telefone: "000000000", numeros: "043, 134, 169" },
+        { nome: "Caio Candeloro Geraldo", telefone: "16997767042", numeros: "005" },
+        { nome: "Dilberto Rocha Júnior", telefone: "17-981891835", numeros: "080, 164" },
+        { nome: "Marcelo Teixeira da Costa", telefone: "17991030939", numeros: "090" },
+        { nome: "Renato Dervelan", telefone: "17991451919", numeros: "069, 085" },
+        { nome: "Henrique Golin", telefone: "17997331004", numeros: "126, 142, 150, 158, 166, 174, 182, 190" },
+        { nome: "André Luís de Andrade Bodini", telefone: "17981250461", numeros: "006, 016, 025, 055, 083, 099, 100, 199" },
+        { nome: "Renato Finato", telefone: "17981237556", numeros: "187, 188, 194, 195" },
+        { nome: "Abissair de Paula e Silva", telefone: "17 982055020", numeros: "034" },
+        { nome: "Junior Filiè", telefone: "17991576499", numeros: "027, 081, 093, 103, 151, 184" },
+        { nome: "Petronilho Corrêa Junior", telefone: "11953830159", numeros: "076, 176" },
+        { nome: "Edson Kubiak", telefone: "17997755420", numeros: "037" },
+        { nome: "Eder Zago de Souza", telefone: "17991253831", numeros: "113" },
+        { nome: "Ademar Bodini", telefone: "16 999913242", numeros: "030, 032, 042, 074, 104, 105" },
+        { nome: "Luiz Felipe Meneguini", telefone: "17997764287", numeros: "056, 096, 178, 193" },
+        { nome: "Aleister Bueno", telefone: "(17)991671392", numeros: "046" },
+        { nome: "Adelino Bueno dos Santos", telefone: "(17) 98814-7600", numeros: "040, 041, 064, 065" },
+        { nome: "Fabricio", telefone: "17991233211", numeros: "197" },
+        { nome: "Fabrício", telefone: "17991233211", numeros: "181" },
+        { nome: "Gleber Paulo Antônio Filho", telefone: "17988125588", numeros: "052, 075, 092, 097, 152, 191" },
+        { nome: "Pedro demarqu", telefone: "017982080488", numeros: "054, 059, 091, 109, 135, 145, 170, 175, 189, 192" },
+        { nome: "James Rodrigo Longhini", telefone: "(17) 981027714", numeros: "137" },
+        { nome: "Felipe Cabral Silveira", telefone: "17988269484", numeros: "061, 073" },
+        { nome: "Adolfo jacovacci junior", telefone: "17997231297", numeros: "062, 071, 086, 183" },
+        { nome: "Robson de Padua Ribeiro", telefone: "17997420375", numeros: "123, 143" },
+        { nome: "Manoel Caires", telefone: "17997713287", numeros: "162, 163" },
+        { nome: "Douglas", telefone: "16 99716-2208", numeros: "067, 160" },
+        { nome: "Antônio Esteves Marques", telefone: "17981920034", numeros: "082, 087" },
+        { nome: "Schin", telefone: "17 99609-4315", numeros: "089, 101, 177" },
+        { nome: "André Yano", telefone: "17981116768", numeros: "094, 106, 117, 121" },
+        { nome: "André Moretti Zito", telefone: "17997731776", numeros: "095, 107, 112, 115, 116, 119, 120, 124, 125, 127" },
+        { nome: "José Aparecido Quintino", telefone: "16 997525308", numeros: "155, 157" },
+        { nome: "Roberto Girio", telefone: "16000000", numeros: "165" },
+        { nome: "Antonio Roberto Agostini", telefone: "16 99156-2266", numeros: "167" },
+        { nome: "Carlos Augusto Kmniecik", telefone: "16 99608.1504", numeros: "168" },
+        { nome: "Balanga", telefone: "160000000", numeros: "128, 130" },
+        { nome: "Érika", telefone: "00000000", numeros: "136, 138, 139" },
+        { nome: "Érika", telefone: "17000000", numeros: "132, 140, 141, 146, 153" }
+    ];
+
+    // ====== CONTAGEM REGRESSIVA ======
+    let countdown = COUNTDOWN_TIME;
+    const countdownNumberEl = document.getElementById('countdownNumber');
+    const countdownOverlay = document.getElementById('countdownOverlay');
+
+    const countdownInterval = setInterval(() => {
+        countdown--;
+        countdownNumberEl.textContent = countdown;
+
+        if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            iniciarRoleta();
+        }
+    }, 1000);
+
+    // ====== ROLETA DE NÚMEROS ======
+    const wheelNumberEl = document.getElementById('wheelNumber');
+    const resultSection = document.getElementById('resultSection');
+    const resultNumberEl = document.getElementById('resultNumber');
+
+    function getRandomNumber() {
+        return Math.floor(Math.random() * 200);
+    }
+
+    function iniciarRoleta() {
+        // Mostrar números aleatórios rapidamente (tipo roleta)
+        const spins = 40; // quantos números mostrar
+        const duration = 3000; // 3 segundos
+        const delayPerSpin = duration / spins;
+
+        for (let i = 0; i < spins; i++) {
+            setTimeout(() => {
+                const randomNum = getRandomNumber();
+                wheelNumberEl.textContent = String(randomNum).padStart(3, '0');
+            }, i * delayPerSpin);
+        }
+
+        // Após 3 segundos, mostrar o número vencedor
+        setTimeout(() => {
+            wheelNumberEl.textContent = String(WINNING_NUMBER).padStart(3, '0');
+            wheelNumberEl.classList.add('stopped');
+            resultSection.classList.add('show');
+            montarTabelaParticipantes();
+        }, duration + 200);
+    }
+
+    // ====== TABELA DE PARTICIPANTES ======
+    function montarTabelaParticipantes() {
+        const tbody = document.getElementById('participantsBody');
+        tbody.innerHTML = '';
+
+        participants.forEach((p, index) => {
+            const tr = document.createElement('tr');
+
+            const numeros = p.numeros
+                .split(',')
+                .map(n => n.trim())
+                .map(n => String(parseInt(n)).padStart(3, '0'));
+
+            const temVencedor = numeros.includes(String(WINNING_NUMBER).padStart(3, '0'));
+
+            if (temVencedor) {
+                tr.classList.add('winner-row');
+            }
+
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+                <td><strong>${p.nome}</strong></td>
+                <td>${p.telefone}</td>
+                <td>${p.numeros}</td>
+                <td>${temVencedor ? '<span class="winner-badge">✓ Vencedor</span>' : ''}</td>
+            `;
+
+            tbody.appendChild(tr);
+
+            // Se é o vencedor, rolar até ele
+            if (temVencedor) {
+                setTimeout(() => {
+                    tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 3500);
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
